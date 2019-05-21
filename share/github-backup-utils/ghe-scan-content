@@ -35,7 +35,7 @@ scan_git_object () {
 
 # Scan loose objects
 cat $rsync_log |
-  perl -lne '/^.{26} "recv\/(.+)\/([0-9]+)\.git\/objects\/([\/A-Za-z0-9]{41})\"$/ and print "$1 ","$2 ",$3 =~ s/\///r' |
+  perl -lne '/^.* .recv\/(.+)\/([0-9]+)\.git\/objects\/([\/A-Za-z0-9]{41}).$/ and print "$1 ","$2 ",$3 =~ s/\///r' |
   while read -r repo_dir repo_id obj; do
     pushd "$snapshot_dir/repositories/$repo_dir/$repo_id.git" >/dev/null
       scan_git_object $repo_id $obj
@@ -44,7 +44,7 @@ cat $rsync_log |
 
 # Scan pack files
 cat $rsync_log |
-  perl -lne '/^.{26} "recv\/(.+)\/([0-9]+)\.git\/objects\/pack\/pack-([\/A-Za-z0-9]+)\.pack\"$/ and print "$1 $2 $3"' |
+  perl -lne '/^.* .recv\/(.+)\/([0-9]+)\.git\/objects\/pack\/pack-([\/A-Za-z0-9]+)\.pack.$/ and print "$1 $2 $3"' |
   while read -r repo_dir repo_id pack; do
     pushd "$snapshot_dir/repositories/$repo_dir/$repo_id.git" >/dev/null
       git show-index <"objects/pack/pack-$pack.idx" |
