@@ -192,8 +192,8 @@ export GHE_SNAPSHOT_DIR
 # TODO
 GHE_SCAN_CONTENT=${GHE_SCAN_CONTENT:-yes}
 if [ "$GHE_SCAN_CONTENT" = "yes" ]; then
-  # TODO check if rsync version supports that flag!
-  export GHE_RSYNC_LOG="--log-file=${TMPDIR}/rsync.log --log-file-format='%o/%n'"
+  # TODO check if rsync version supports the log flag!
+  export GHE_RSYNC_LOG="${TMPDIR}/rsync.log"
 fi
 
 ###############################################################################
