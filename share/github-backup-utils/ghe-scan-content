@@ -4,7 +4,7 @@
 #/ TODO
 #/
 set -e
-set -x
+
 # Bring in the backup configuration
 # shellcheck source=share/github-backup-utils/ghe-backup-config
 . "$( dirname "${BASH_SOURCE[0]}" )/ghe-backup-config"
