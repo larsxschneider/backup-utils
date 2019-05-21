@@ -55,3 +55,6 @@ GHE_NUM_SNAPSHOTS=10
 # for the audit log entries to be searchable as they need to be reindexed
 # in Elasticsearch.
 #GHE_BACKUP_ES_AUDIT_LOGS=no
+
+# TODO
+#GHE_SCAN_CONTENT=yes

@@ -25,7 +25,7 @@ else
   done
 fi
 
-(rsync "${parameters[@]}" $GHE_EXTRA_RSYNC_OPTS 3>&1 1>&2 2>&3 3>&- |
+(rsync "${parameters[@]}" $GHE_RSYNC_LOG $GHE_EXTRA_RSYNC_OPTS 3>&1 1>&2 2>&3 3>&- |
   (egrep -v "$ignoreout" || true)) 3>&1 1>&2 2>&3 3>&- |
   (egrep -v "$ignoreout" || true)
 res=$?

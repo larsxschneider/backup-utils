@@ -239,5 +239,10 @@ fi
 echo "Checking for leaked ssh keys ..."
 ghe-detect-leaked-ssh-keys -s "$GHE_SNAPSHOT_DIR" || true
 
+# Scan for content
+if [ -f $GHE_RSYNC_LOG ]; then
+  ghe-scan-content $GHE_RSYNC_LOG $GHE_SNAPSHOT_DIR
+fi
+
 # Make sure we exit zero after the conditional
 true

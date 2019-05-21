@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#/ Usage: ghe-scan-content [<option>...] <host>
+#/
+#/ TODO
+#/
+set -e
+
+# Bring in the backup configuration
+# shellcheck source=share/github-backup-utils/ghe-backup-config
+. "$( dirname "${BASH_SOURCE[0]}" )/ghe-backup-config"
+
+rsync_log=$1
+snapshot_dir=$2
+pattern=(-e '[Gg]ithub' -e "boo")
+
+# Show usage
+[ -z "$rsync_log" ] && print_usage
+
+# Exit early when testing
+[ -n "$GHE_TEST_REMOTE_VERSION" ] && exit 0
+
+scan_git_object () {
+  repo_id=$1
+  obj=$2
+  if result=$(git cat-file -p $obj | grep -o ${pattern[@]}); then
+    echo "------------------------------------------------------------------------"
+    echo "# repo ID    : $repo_id"
+    echo "# object     : $obj"
+    echo "# object type: $(git cat-file -t $obj)"
+    echo "# findings:"
+    printf "$result" | sort | uniq
+    echo
+  fi
+}
+
+# Scan loose objects
+cat $rsync_log |
+  perl -lne '/^.{26} "recv\/(.+)\/([0-9]+)\.git\/objects\/([\/A-Za-z0-9]{41})\"$/ and print "$1 ","$2 ",$3 =~ s/\///r' |
+  while read -r repo_dir repo_id obj; do
+    pushd "$snapshot_dir/repositories/$repo_dir/$repo_id.git" >/dev/null
+      scan_git_object $repo_id $obj
+    popd >/dev/null
+  done
+
+# Scan pack files
+cat $rsync_log |
+  perl -lne '/^.{26} "recv\/(.+)\/([0-9]+)\.git\/objects\/pack\/pack-([\/A-Za-z0-9]+)\.pack\"$/ and print "$1 $2 $3"' |
+  while read -r repo_dir repo_id pack; do
+    pushd "$snapshot_dir/repositories/$repo_dir/$repo_id.git" >/dev/null
+      git show-index <"objects/pack/pack-$pack.idx" |
+        cut -d' ' -f2 |
+        while read -r obj; do
+          scan_git_object $repo_id $obj
+        done
+    popd >/dev/null
+  done
