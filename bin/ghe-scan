@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#/ Usage: ghe-scan-delta [-s <snapshot-id>]
+#/
+#/ TODO
+#/
+set -e
+set -f
+# Parse arguments
+while true; do
+  case "$1" in
+    -s)
+      snapshot_id="$(basename "$2")"
+      shift 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+pattern=(-e '[Gg]ithub' -e "boo")
+
+# Bring in the backup configuration
+# shellcheck source=share/github-backup-utils/ghe-backup-config
+. "$( dirname "${BASH_SOURCE[0]}" )/../share/github-backup-utils/ghe-backup-config"
+
+# ghe-restore-snapshot-path validates it exists, determines what current is,
+# and if there's any problem, exit for us
+ghe_scan_snapshot_path="$(ghe-restore-snapshot-path "$snapshot_id")"
+ghe_rsync_log_path="$ghe_scan_snapshot_path/rsync.log"
+
+# check if the rsync.log exists
+[ -s "$ghe_rsync_log_path" ] || (echo "rsync.log not found"; print_usage)
+
+scan_git_object () {
+  repo_id=$1
+  obj=$2
+  if result=$(git cat-file -p $obj | grep -o ${pattern[@]}); then
+    echo "------------------------------------------------------------------------"
+    echo "# repo ID    : $repo_id"
+    echo "# object     : $obj"
+    echo "# object type: $(git cat-file -t $obj)"
+    echo "# findings:"
+    printf "$result" | sort | uniq
+    echo
+  fi
+}
+
+# Scan loose objects
+cat $ghe_rsync_log_path |
+  perl -lne '/^.* .recv\/(.+)\/([0-9]+)\.git\/objects\/([\/A-Za-z0-9]{41}).$/ and print "$1 ","$2 ",$3 =~ s/\///r' |
+  while read -r repo_dir repo_id obj; do
+    pushd "$snapshot_dir/repositories/$repo_dir/$repo_id.git" >/dev/null
+      scan_git_object $repo_id $obj
+    popd >/dev/null
+  done
+
+# Scan pack files
+cat $ghe_rsync_log_path |
+  perl -lne '/^.* .recv\/(.+)\/([0-9]+)\.git\/objects\/pack\/pack-([\/A-Za-z0-9]+)\.pack.$/ and print "$1 $2 $3"' |
+  while read -r repo_dir repo_id pack; do
+    pushd "$snapshot_dir/repositories/$repo_dir/$repo_id.git" >/dev/null
+      git show-index <"objects/pack/pack-$pack.idx" |
+        cut -d' ' -f2 |
+        while read -r obj; do
+          scan_git_object $repo_id $obj
+        done
+    popd >/dev/null
+  done
